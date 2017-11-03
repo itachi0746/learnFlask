@@ -1,2 +1,2 @@
-Git is a distributed version control system.
-Git is free software.
+在学习《Flask-Web开发：基于Python的Web应用开发实战》时进行的练习。
+模仿书上的项目进行练习，有部分改动。
