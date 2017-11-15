@@ -8,8 +8,9 @@ class Config:
     MAIL_PORT = 25
     MAIL_SERVER = 'smtp.qq.com'
     MAIL_USE_TLS = True
-    MAIL_USERNAME = os.environ.get('MAIL_USERNAME')  # 通过在虚拟环境 set MAIL_USERNAME= 设置
-    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')  # 密码要设置成第三方授权码 glkydvlcqogpbcdg
+    # MAIL_USE_SSL = True  # 好像不行
+    MAIL_USERNAME = os.environ.get('MAIL_USERNAME')  # 通过在虚拟环境/命令行 set MAIL_USERNAME=xxxx@qq.com
+    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')  # 密码要设置成第三方授权码
     FLASKY_MAIL_SUBJECT_PREFIX = '[Flasky]'  # 邮件标题前缀
     FLASKY_MAIL_SENDER = os.environ.get('MAIL_USERNAME')
     FLASKY_ADMIN = os.environ.get('FLASKY_ADMIN')
