@@ -13,7 +13,7 @@ class Config:
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')  # 密码要设置成第三方授权码
     FLASKY_MAIL_SUBJECT_PREFIX = '[Flasky]'  # 邮件标题前缀
     FLASKY_MAIL_SENDER = os.environ.get('MAIL_USERNAME')
-    FLASKY_ADMIN = os.environ.get('FLASKY_ADMIN')
+    FLASKY_ADMIN = os.environ.get('FLASKY_ADMIN')  # 管理员的邮件地址
 
     @staticmethod
     def init_app(app):
