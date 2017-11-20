@@ -23,18 +23,18 @@ class Config:
 class DevelopmentConfig(Config):
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or \
-        'mysql://root:19910826@localhost/data_dev'
+        'mysql://root:123456@localhost/data_dev'
 
 
 class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URL') or \
-        'mysql://root:19910826@localhost/data_test'
+        'mysql://root:123456@localhost/data_test'
 
 
 class ProductionConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'mysql://root:19910826@localhost/data_prd'
+        'mysql://root:123456@localhost/data_prd'
 
 
 config = {

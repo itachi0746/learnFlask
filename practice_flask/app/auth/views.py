@@ -14,6 +14,7 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():  # 验证表单数据
         user = User.query.filter_by(email=form.email.data).first()
+        # return jsonify({'s': str(user)})
         if user is not None and user.verify_password(form.password.data):  # 用户存在且密码正确
             login_user(user, form.remember_me.data)  # 在用户会话中把用户标记为已登录
             return redirect(request.args.get('next') or url_for('main.index'))  # 返回原来的网页或者主页
@@ -35,9 +36,9 @@ def logout():
 def register():
     form = RegistrationForm()
     if form.validate_on_submit():
-        user = User(email=form.email.data,
-                    username=form.username.data,
-                    password=form.password.data)
+        user = User(email=form.email.data, username=form.username.data,
+                    password=form.username.data)
+        # return jsonify({'s': str(user)})
         db.session.add(user)
         db.session.commit()  # 不像之前那样延后提交,因为确认令牌需要用到用户的id
         token = user.generate_confirmation_token()
@@ -71,11 +72,13 @@ def unconfirmed():
 
 @auth.before_app_request
 def before_request():
-    if current_user.is_authenticated \
-            and not current_user.confirmed \
-            and request.endpoint[:5] != 'auth.' \
-            and request.endpoint != 'static':
-        return redirect(url_for('auth.unconfirmed'))
+    """在用户每次请求前运行的函数"""
+    if current_user.is_authenticated:
+        current_user.ping()  # 更新已登录用户的访问时间
+        if not current_user.confirmed \
+                and request.endpoint[:5] != 'auth.' \
+                and request.endpoint != 'static':
+            return redirect(url_for('auth.unconfirmed'))
 
 
 # 重新发送用户确认邮件
