@@ -42,7 +42,7 @@ def register():
         db.session.add(user)
         db.session.commit()  # 不像之前那样延后提交,因为确认令牌需要用到用户的id
         token = user.generate_confirmation_token()
-        send_email(user.mail, 'Confirm Your Account',
+        send_email(user.email, 'Confirm Your Account',
                    'auth/email/confirm', user=user, token=token)  # 发送确认邮件
         flash('A confirmation email has been sent to you by emil.')
         # flash('test good')

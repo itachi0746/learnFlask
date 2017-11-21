@@ -14,6 +14,7 @@ class Config:
     FLASKY_MAIL_SUBJECT_PREFIX = '[Flasky]'  # 邮件标题前缀
     FLASKY_MAIL_SENDER = os.environ.get('MAIL_USERNAME')
     FLASKY_ADMIN = os.environ.get('FLASKY_ADMIN')  # 管理员的邮件地址
+    FLASKY_POSTS_PER_PAGE = 20
 
     @staticmethod
     def init_app(app):
@@ -23,7 +24,7 @@ class Config:
 class DevelopmentConfig(Config):
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or \
-        'mysql://root:123456@localhost/data_dev'
+        'mysql+pymysql://root:123456@localhost/data_dev'
 
 
 class TestingConfig(Config):
