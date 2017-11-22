@@ -5,6 +5,8 @@ from flask import current_app, request
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from datetime import datetime
 import hashlib
+from markdown import markdown
+import bleach
 
 
 class Permission:
@@ -57,6 +59,7 @@ class Post(db.Model):
     body = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    body_html = db.Column(db.Text)  # 缓存博客文章HTML代码
 
     @staticmethod
     def generate_fake(count=100):
@@ -73,6 +76,19 @@ class Post(db.Model):
                      author=u)
             db.session.add(p)
             db.session.commit()
+
+    @staticmethod
+    def on_changed_body(target, value, oldvalue, initiator):
+        allowed_tags = ['a', 'abbr', 'acronym', 'b', 'blockquote', 'code',
+                        'em', 'i', 'li', 'ol', 'pre', 'strong', 'ul',
+                        'h1', 'h2', 'h3', 'p']
+        target.body_html = bleach.linkify(bleach.clean(
+            markdown(value, output_format='html'),
+            tags=allowed_tags, strip=True))
+
+
+# 监听程序, 只要Post类实例的body字段设置了新值, 函数就会自动调用
+db.event.listen(Post.body, 'set', Post.on_changed_body)
 
 
 class User(UserMixin, db.Model):
