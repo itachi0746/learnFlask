@@ -1,5 +1,5 @@
 from flask import render_template, redirect, request, \
-    url_for, abort, flash, current_app
+    url_for, abort, flash, current_app, make_response
 from .. import db
 from ..models import User, Role, Permission, Post
 from .forms import EditProfileForm, EditProfileAdminForm, \
@@ -19,7 +19,14 @@ def index():
         db.session.add(post)
         return redirect(url_for('.index'))
     page = request.args.get('page', 1, type=int)  # 渲染的页数
-    pagination = Post.query.order_by(Post.timestamp.desc()).paginate(
+    show_followed = False
+    if current_user.is_authenticated:
+        show_followed = bool(request.cookies.get('show_followed', ''))
+    if show_followed:
+        query = current_user.followed_posts  # 显示关注的用户文章
+    else:
+        query = Post.query  # 显示全部
+    pagination = query.order_by(Post.timestamp.desc()).paginate(
         page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'],
         error_out=False)
     posts = pagination.items
@@ -116,7 +123,7 @@ def followers(username):
         return redirect(url_for('.index'))
     page = request.args.get('page', 1, type=int)  # 查询字符串, 返回页数
     pagination = user.followers.paginate(
-        page, per_page=current_user.config['FLASKY_FOLLOWERS_PER_PAGE'],
+        page, per_page=current_app.config['FLASKY_FOLLOWERS_PER_PAGE'],
         error_out=False)  # 分页
     follows = [{'user': item.follower, 'timestamp': item.timestamp}  # 转换为方便渲染的新列表
                for item in pagination.items]
@@ -175,3 +182,21 @@ def unfollow(username):
     current_user.unfollow(user)
     flash('You are not following %s anymore.' % username)
     return redirect(url_for('.user', username=username))
+
+
+@main.route('/all')
+@login_required
+def show_all():
+    """查询所有文章"""
+    resp = make_response(redirect(url_for('.index')))
+    resp.set_cookie('show_followed', '', max_age=30*24*60*60)
+    return resp
+
+
+@main.route('/followed')
+@login_required
+def show_followed():
+    """查询关注用户的文章"""
+    resp = make_response(redirect(url_for('.index')))
+    resp.set_cookie('show_followed', '1', max_age=30*24*60*60)
+    return resp

@@ -152,6 +152,15 @@ class User(UserMixin, db.Model):
             except IntegrityError:
                 db.session.rollback()
 
+    @staticmethod
+    def add_self_follows():
+        """把用户设置为自己的关注者"""
+        for user in User.query.all():
+            if not user.is_following(user):
+                user.follow(user)
+                db.session.add(user)
+                db.session.commit()
+
     def __init__(self, **kwargs):
         """定义默认的用户角色"""
         super(User, self).__init__(**kwargs)  # 调用基类构造函数
@@ -163,6 +172,7 @@ class User(UserMixin, db.Model):
         if self.email is not None and self.avatar_hash is None:
             self.avatar_hash = hashlib.md5(
                 self.email.encode('utf-8')).hexdigest()
+        self.followed.append(Follow(followed=self))
 
     @property  # 把方法变为属性来调用
     def password(self):
@@ -275,6 +285,12 @@ class User(UserMixin, db.Model):
     def is_followed_by(self, user):
         return self.followers.filter_by(
             follower_id=user.id).first() is not None
+
+    @property
+    def followed_posts(self):
+        """获取所关注用户的文章"""
+        return Post.query.join(Follow, Follow.followed_id == Post.author_id)\
+            .filter(Follow.follower_id == self.id)  # 先收集过滤器,再查询
 
     def __repr__(self):
         return '<User %r>' % self.username
