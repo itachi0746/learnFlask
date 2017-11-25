@@ -1,9 +1,9 @@
 from flask import render_template, redirect, request, \
     url_for, abort, flash, current_app, make_response
 from .. import db
-from ..models import User, Role, Permission, Post
+from ..models import User, Role, Permission, Post, Comment
 from .forms import EditProfileForm, EditProfileAdminForm, \
-    PostForm
+    PostForm, CommentForm
 from . import main
 from flask_login import current_user, login_required
 from ..decorators import admin_required, permission_required
@@ -15,7 +15,7 @@ def index():
     if current_user.can(Permission.WRITE_ARTICLES) and \
             form.validate_on_submit():
         post = Post(body=form.body.data,
-                    author=current_user._get_current_object())
+                    author=current_user._get_current_object())  # author不能直接设为current_user,因为这个变量是上下文代理对象
         db.session.add(post)
         return redirect(url_for('.index'))
     page = request.args.get('page', 1, type=int)  # 渲染的页数
@@ -87,13 +87,6 @@ def edit_profile_admin(id):
     form.location.data = user.location
     form.about_me.data = user.about_me
     return render_template('edit_profile.html', form=form, user=user)
-
-
-@main.route('/post/<int:id>')
-def post(id):
-    """文章的固定链接"""
-    post = Post.query.get_or_404(id)
-    return render_template('post.html', posts=[post])
 
 
 @main.route('/edit/<int:id>', methods=['GET', 'POST'])
@@ -200,3 +193,65 @@ def show_followed():
     resp = make_response(redirect(url_for('.index')))
     resp.set_cookie('show_followed', '1', max_age=30*24*60*60)
     return resp
+
+
+@main.route('/post/<int:id>', methods=['GET', 'POST'])
+def post(id):
+    """支持博客文章评论"""
+    post = Post.query.get_or_404(id)
+    form = CommentForm()
+    if form.validate_on_submit():
+        comment = Comment(body=form.body.data,
+                          post=post,
+                          author=current_user._get_current_object())
+        db.session.add(comment)
+        flash('Your comment has been published.')
+        return redirect(url_for('.post', id=post.id, page=-1))  # page设为-1, 这是特殊数, 用来请求评论的最后一页
+    page = request.args.get('page', 1, type=int)
+    if page == -1:
+        page = (post.comments.count() - 1) // \
+                current_app.config['FLASKY_COMMENTS_PER_PAGE'] + 1
+    pagination = post.comments.order_by(Comment.timestamp.asc()).paginate(
+        page, per_page=current_app.config['FLASKY_COMMENTS_PER_PAGE'],
+        error_out=False)
+    comments = pagination.items
+    return render_template('post.html', posts=[post], form=form,
+                           comments=comments, pagination=pagination)
+
+
+@main.route('/moderate')
+@login_required
+@permission_required(Permission.MODERATE_COMMENTS)
+def moderate():
+    """管理评论的路由"""
+    page = request.args.get('page', 1, type=int)
+    pagination = Comment.query.oeder_by(Comment.timestamp.desc()).paginate(
+        page, per_page=current_app.config['FLASKY_COMMENTS_PER_PAGE'],
+        error_out=False)
+    comments = pagination.items
+    return render_template('moderate.html', comments=comments,
+                           pagination=pagination, page=page)
+
+
+@main.route('/moderate/enable/<int:id>')
+@login_required
+@permission_required(Permission.MODERATE_COMMENTS)
+def moderate_enable(id):
+    """管理评论路由"""
+    comment = Comment.query.get_or_404(id)
+    comment.disabled = False
+    db.session.add(comment)
+    return redirect(url_for('.moderate',
+                            page=request.args.get('page', 1, type=int)))
+
+
+@main.route('/moderate/disable/<int:id>')
+@login_required
+@permission_required(Permission.MODERATE_COMMENTS)
+def moderate_disable(id):
+    """管理评论路由"""
+    comment = Comment.query.get_or_404(id)
+    comment.disabled = True
+    db.session.add(comment)
+    return redirect(url_for('.moderate',
+                            page=request.args.get('page', 1, type=int)))

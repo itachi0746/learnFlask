@@ -14,7 +14,6 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():  # 验证表单数据
         user = User.query.filter_by(email=form.email.data).first()
-        # return jsonify({'s': str(user)})
         if user is not None and user.verify_password(form.password.data):  # 用户存在且密码正确
             login_user(user, form.remember_me.data)  # 在用户会话中把用户标记为已登录
             return redirect(request.args.get('next') or url_for('main.index'))  # 返回原来的网页或者主页
@@ -44,7 +43,7 @@ def register():
         token = user.generate_confirmation_token()
         send_email(user.email, 'Confirm Your Account',
                    'auth/email/confirm', user=user, token=token)  # 发送确认邮件
-        flash('A confirmation email has been sent to you by emil.')
+        flash('A confirmation email has been sent to you by email.')
         # flash('test good')
         return redirect(url_for('main.index'))
     return render_template('auth/register.html', form=form)

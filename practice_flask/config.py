@@ -16,6 +16,8 @@ class Config:
     FLASKY_ADMIN = os.environ.get('FLASKY_ADMIN')  # 管理员的邮件地址
     FLASKY_POSTS_PER_PAGE = 20
     FLASKY_FOLLOWERS_PER_PAGE = 50
+    FLASKY_COMMENTS_PER_PAGE = 30
+
 
 
     @staticmethod
