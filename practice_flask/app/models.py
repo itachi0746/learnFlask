@@ -1,12 +1,13 @@
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin, AnonymousUserMixin  # UserMixin记录用户的认证状态
 from . import login_manager, db
-from flask import current_app, request
+from flask import current_app, request, url_for
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from datetime import datetime
 import hashlib
 from markdown import markdown
 import bleach
+from .exceptions import ValidationError
 
 
 class Permission:
@@ -62,6 +63,28 @@ class Post(db.Model):
     body_html = db.Column(db.Text)  # 缓存博客文章HTML代码
     comments = db.relationship('Comment', backref='post', lazy='dynamic')
 
+    def to_json(self):
+        """把文章转换成JSOn格式的序列化字典"""
+        json_post = {
+            'url': url_for('api.get_post', id=self.id, _external=True),
+            'body': self.body,
+            'body_html': self.timestamp,
+            'author': url_for('api.get_user', id=self.author_id,
+                              _external=True),
+            'comments': url_for('api.get_post_comments', id=self.id,
+                                _external=True),
+            'comment_count': self.comments.count(),
+        }
+        return json_post
+
+    @staticmethod
+    def from_json(json_post):
+        """从JSON格式数据创建博客文章"""
+        body = json_post.get('body')
+        if body is None or body == '':
+            raise ValidationError('post does not have a body')
+        return Post(body=body)
+
     @staticmethod
     def generate_fake(count=100):
         """生成虚拟文章"""
@@ -112,6 +135,25 @@ class Comment(db.Model):
         target.body_html = bleach.linkify(bleach.clean(
             markdown(value, output_format='html'),
             tags=allowed_tags, strip=True))
+
+    def to_json(self):
+        json_comment = {
+            'url': url_for('api.get_comment', id=self.id, _external=True),
+            'post': url_for('api.get_post', id=self.post_id, _external=True),
+            'body': self.body,
+            'body_html': self.body_html,
+            'timestamp': self.timestamp,
+            'author': url_for('api.get_user', id=self.author_id,
+                              _external=True),
+        }
+        return json_comment
+
+    @staticmethod
+    def from_json(json_comment):
+        body = json_comment.get('body')
+        if body is None or body == '':
+            raise ValidationError('comment does not have a body')
+        return Comment(body=body)
 
 
 db.event.listen(Comment.body, 'set', Comment.on_change_body)
@@ -211,14 +253,14 @@ class User(UserMixin, db.Model):
 
     # 将密码和储存在User模型中的密码散列值进行比较,如果返回True,就表明密码正确
     def verify_password(self, password):
+        """将密码和储存在User模型中的密码散列值进行比较,
+        如果返回True,就表明密码正确"""
         return check_password_hash(self.password_hash, password)
 
-    # 生成令牌,有效时间默认为1小时
     def generate_confirmation_token(self, expiration=3600):
         s = Serializer(current_app.config['SECRET_KEY'], expiration)
         return s.dumps({'confirm': self.id})
 
-    # 检验令牌
     def confirm(self, token):
         s = Serializer(current_app.config['SECRET_KEY'])
         try:
@@ -231,12 +273,10 @@ class User(UserMixin, db.Model):
         db.session.add(self)
         return True
 
-    # 生成重置令牌
     def generate_reset_token(self, expiration=3600):
         s = Serializer(current_app.config['SECRET_KEY'], expiration)
         return s.dumps({'reset': self.id})
 
-    # 重置密码
     def reset_password(self, token, new_password):
         s = Serializer(current_app.config['SECRET_KEY'])
         try:
@@ -318,6 +358,34 @@ class User(UserMixin, db.Model):
         """获取所关注用户的文章"""
         return Post.query.join(Follow, Follow.followed_id == Post.author_id)\
             .filter(Follow.follower_id == self.id)  # 先收集过滤器,再查询
+
+    def generate_auth_token(self, expiration):
+        s = Serializer(current_app.config['SECRET_KEY'],
+                       expires_in=expiration)
+        return s.dumps({'id': self.id}).decode('ascii')  # 要解码
+
+    @staticmethod
+    def verify_auth_token(token):
+        s = Serializer(current_app.config['SECRET_KEY'])
+        try:
+            data = s.loads(token)
+        except:
+            return None
+        return User.query.get(data['id'])
+
+    def to_json(self):
+        """把用户转换成JSON格式的序列化字典"""
+        json_user = {
+            'url': url_for('api.get_post', id=self.id, _external=True),
+            'username': self.username,
+            'member_since': self.member_since,
+            'last_seen': self.last_seen,
+            'posts': url_for('api.get_user_posts', id=self.id, _external=True),
+            'followed_posts': url_for('api.get_user_followed_posts',
+                                      id=self.id, _external=True),
+            'post_count': self.posts.count(),
+        }
+        return json_user
 
     def __repr__(self):
         return '<User %r>' % self.username
