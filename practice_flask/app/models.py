@@ -73,7 +73,7 @@ class Post(db.Model):
                               _external=True),
             'comments': url_for('api.get_post_comments', id=self.id,
                                 _external=True),
-            'comment_count': self.comments.count(),
+            'comment_count': self.comments.count()
         }
         return json_post
 
@@ -144,7 +144,7 @@ class Comment(db.Model):
             'body_html': self.body_html,
             'timestamp': self.timestamp,
             'author': url_for('api.get_user', id=self.author_id,
-                              _external=True),
+                              _external=True)
         }
         return json_comment
 
@@ -376,14 +376,14 @@ class User(UserMixin, db.Model):
     def to_json(self):
         """把用户转换成JSON格式的序列化字典"""
         json_user = {
-            'url': url_for('api.get_post', id=self.id, _external=True),
+            'url': url_for('api.get_user', id=self.id, _external=True),
             'username': self.username,
             'member_since': self.member_since,
             'last_seen': self.last_seen,
             'posts': url_for('api.get_user_posts', id=self.id, _external=True),
             'followed_posts': url_for('api.get_user_followed_posts',
                                       id=self.id, _external=True),
-            'post_count': self.posts.count(),
+            'post_count': self.posts.count()
         }
         return json_user
 
