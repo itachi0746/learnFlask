@@ -1,4 +1,4 @@
-#!/user/bin/env python
+#!/usr/bin/env python
 import os
 COV = None
 if os.environ.get('FLASK_COVERAGE'):
@@ -46,6 +46,23 @@ def test(coverage=False):
         COV.html_report(directory=covdir)
         print(r'HTML version: file:\\%s\index.html' % covdir)
         COV.erase()
+
+
+@manager.command
+def deploy():
+    """Run deployment tasks."""
+    from flask_migrate import upgrade
+    from app.models import Role, User
+
+    # 把数据库迁移到最新修订版本
+    upgrade()
+
+    # 创建用户角色
+    Role.insert_roles()
+
+    # 让所有用户关注自己
+    User.add_self_follows()
+
 
 
 if __name__ == '__main__':
